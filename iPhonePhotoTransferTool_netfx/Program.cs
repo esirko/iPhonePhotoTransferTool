@@ -167,7 +167,8 @@ namespace iPhonePhotoTransferTool
                     List<MediaDirectoryInfo> dirs = device.GetDirectoryInfo("Internal Storage/DCIM").EnumerateDirectories().OrderBy(d => d.Name).ToList();
                     for (int i = 0; i < dirs.Count; i++)
                     {
-                        if (args[0] == "*" || args[0] == dirs[i].Name)
+                        if (Regex.IsMatch(dirs[i].Name, "^" + Regex.Escape(args[0]).Replace("\\*", ".*") + "$"))
+                        //if (args[0] == "*" || args[0] == dirs[i].Name)
                         {
                             Console.WriteLine($"[{i}/{dirs.Count}] {dirs[i].Name}");
 
@@ -196,8 +197,17 @@ namespace iPhonePhotoTransferTool
                                 {
                                     bool quiet = options.ContainsKey("--quiet");
                                     bool dryrun = options.ContainsKey("--dryrun") || options.ContainsKey("--dry-run");
-                                    string dryrunPrefix = dryrun ? "[--dryrun] " : "";
+                                    bool consolidate = options.ContainsKey("--consolidate");
+                                    string dryrunPrefix = dryrun ? "[--dry-run] " : "";
                                     string destinationDir = Path.Combine(args[1], dirs[i].Name);
+
+                                    if (consolidate)
+                                    {
+                                        if (Regex.IsMatch(dirs[i].Name, @"^\d\d\d\d\d\d_[a-z]$"))
+                                        {
+                                            destinationDir = Path.Combine(args[1], dirs[i].Name.Substring(0,7) + "_");
+                                        }
+                                    }
 
                                     Regex regexToIgnore = null;
                                     if (options.TryGetValue("--ignore", out string ignoreOption))
@@ -288,8 +298,9 @@ namespace iPhonePhotoTransferTool
         {
             Console.WriteLine("Commands:");
             Console.WriteLine("  ls * [--summary] [--detail]");
-            Console.WriteLine("  sync * path/to/destination [--ignore regexAgainstFileName] [--dryrun] [--quiet]");
-            Console.WriteLine("  [In the above, * can be a literal star or the name of a single directory, e.g., 112APPLE");
+            Console.WriteLine("  sync * path/to/destination [--ignore regexAgainstFileName] [--consolidate] [--dry-run] [--quiet]");
+            Console.WriteLine("  You probably want to use the --consolidate option, which consolidates 202110_a into 202110__");
+            Console.WriteLine("  [In the above, * can be a simple wildcard expression, e.g., 2021*__ matches 202101__ and 202102__, etc.]");
             Console.WriteLine("  help");
             Console.WriteLine("  exit");
         }
